@@ -68,10 +68,13 @@ def create_config_dict(
     
     privacy_tier_indices = np.arange(domain_size)
     np.random.shuffle(privacy_tier_indices)
-    print(privacy_tier_indices)
+    # print(privacy_tier_indices)
     split_points = np.cumsum((tier_split_percentages*domain_size).astype(int))[:-1]
-    print(split_points)
+    # print(split_points)
     tier_indices = np.split(privacy_tier_indices, split_points)
+    alpha = (domain_size * np.array(tier_split_percentages)).astype(int)
+    alpha[-1] += domain_size - np.sum(alpha)
+
     return dict(
         privacy_budget= privacy_budget, #W
         n_tiers = n_tiers, #N_lev
@@ -79,6 +82,7 @@ def create_config_dict(
         domain_size=domain_size, #N_LOC
         total_records=total_records, # N_USER
         tier_indices=tier_indices, # W_LIST
+        alpha=alpha,
     )
 
 
@@ -86,6 +90,8 @@ def sigmoid(x: float):
     x = np.copy(x)
     return (1 + np.exp(-x))**-1
 
+def matlab_to_numpy(mlarray):
+    return np.array(mlarray._data).reshape(mlarray.size, order='F')
 
 
 def min_opt0(epsilons: float, **kwargs) -> Tuple[List[float], float]:
@@ -96,17 +102,22 @@ def min_opt0(epsilons: float, **kwargs) -> Tuple[List[float], float]:
     returns X, MSE
     """
 
-    args = [privacy_budget, n_tiers, tier_split_percentages, domain_size, total_records, tier_indices] = list(kwargs.values())
-    print(args)
-    gen_constraints = lambda x: nonlcon(x, n_tiers, epsilons)
-    upper_bounds = np.vstack((np.ones((n_tiers, 1)), .5*np.ones((n_tiers, 1))))
-    lower_bounds = np.vstack((.5*np.ones((n_tiers,1)), np.zeros((n_tiers,1))))
-    x_0 = np.vstack((.5*np.ones((n_tiers,1)), sigmoid(epsilons)))
+    args = [privacy_budget, n_tiers, tier_split_percentages, domain_size, total_records, tier_indices, alpha] = list(kwargs.values())
+    # print(args)
+    # gen_constraints = lambda x: nonlcon(x, n_tiers, epsilons)
+    # upper_bounds = np.vstack((np.ones((n_tiers, 1)), .5*np.ones((n_tiers, 1))))
+    # lower_bounds = np.vstack((.5*np.ones((n_tiers,1)), np.zeros((n_tiers,1))))
+    # x_0 = np.vstack((.5*np.ones((n_tiers,1)), sigmoid(np.min(epsilons))*np.ones((n_tiers,1))))
 
-    options = eng.optimoptions('fmincon', 'Algorithm', 'sqp')
-    [X, FVAL, EXITFLAG] = eng.fmincon(fun0, x_0, [], [], [], [], LB, UB, gen_constraints, options)
+    # print(alpha)
+
+    # options = eng.optimoptions('fmincon', 'Algorithm', 'sqp')
+    # [X, FVAL, EXITFLAG] = eng.fmincon(fun0, x_0, [], [], [], [], lower_bounds, upper_bounds, gen_constraints, options)
     # MSE = domain_size*np.exp(epsilon/2)/(np.exp(epsilon/2)-1)**2
-    return X, FVAL
+    output, mse, exitflag = eng.min_opt0(matlab.double(epsilons.tolist()), matlab.double(alpha.tolist()), 2, nargout=3) #TODO figure out how to add more returned arguments....
+    #TODO if the exitflag does not equal 1, add some safety here...
+    x = matlab_to_numpy(output)
+    return x, mse
 
 
 def nonlcon(x, n_tiers, epsilons):
@@ -121,43 +132,56 @@ def nonlcon(x, n_tiers, epsilons):
     
 
 def min_opt1(epsilons: float, **kwargs) -> Tuple[List[float], float]:
-    A = np.zeros((n_tiers**2, n_tiers))
-    B = np.outer.min(epsilons, epsilons).flatten()
-    row = lambda x,y: x*n_tiers + y
+    args = [privacy_budget, n_tiers, tier_split_percentages, domain_size, total_records, tier_indices, alpha] = list(kwargs.values())
+    output, mse, exitflag = eng.min_opt1(matlab.double(epsilons.tolist()), matlab.double(alpha.tolist()), 2, nargout=3) #TODO figure out how to add more returned arguments....
+    x = matlab_to_numpy(output)
+    print(exitflag)
 
-    for i in range(n_tiers):
-        for j in range(n_tiers):
-            if i == j:
-                A[row(i,j), i] = 2
-            else:
-                A[row(i,j), i] = 1
-                A[row(i,j), j] = 1
-    LB = np.zeros((n_tiers,1))
-    x_0 = np.min(epsilons)*np.ones((n_tiers,1))/2
-    options = eng.optimoptions('fmincon', 'Algorithm', 'sqp')
-    [X, FVAL, EXITFLAG] = eng.fmincon(fun0, x_0, A, B, [], [], LB, [], [], options)
-    return X, FVAL
+    return x, mse
+
+    # A = np.zeros((n_tiers**2, n_tiers))
+    # B = np.outer.min(epsilons, epsilons).flatten()
+    # row = lambda x,y: x*n_tiers + y
+
+    # for i in range(n_tiers):
+    #     for j in range(n_tiers):
+    #         if i == j:
+    #             A[row(i,j), i] = 2
+    #         else:
+    #             A[row(i,j), i] = 1
+    #             A[row(i,j), j] = 1
+    # lower_bounds = np.zeros((n_tiers,1))
+    # x_0 = np.min(epsilons)*np.ones((n_tiers,1))/2
+    # options = eng.optimoptions('fmincon', 'Algorithm', 'sqp')
+    # [X, FVAL, EXITFLAG] = eng.fmincon(fun0, x_0, A, B, [], [], lower_bounds, [], [], options)
+    # return X, FVAL
  
 
 def min_opt2(epsilons: float, **kwargs) -> Tuple[List[float], float]:
-    A = np.zeros((n_tiers**2, n_tiers))
-    B = np.ones((n_tiers**2, 1))
-    row = lambda x,y: x*n_tiers + y 
-    for i in range(n_tiers):
-        for j in range(n_tiers):
-            if i == j:
-                A[row(i,j), i] = 1+np.exp(epsilons[i])
-            else:
-                A[row(i,j), i] = np.exp(np.min(epsilons[i], epsilons[j]))
-                A[row(i,j), j] = 1
+    args = [privacy_budget, n_tiers, tier_split_percentages, domain_size, total_records, tier_indices, alpha] = list(kwargs.values())
+    output, mse, exitflag = eng.min_opt2(matlab.double(epsilons.tolist()), matlab.double(alpha.tolist()), 2, nargout=3) #TODO figure out how to add more returned arguments....
+    x = matlab_to_numpy(output)
+    return x, mse
 
-    LB = np.zeros(n_tiers, 1)
-    UB = .5*np.ones((n_tiers, 1))
-    x_0 = np.power(np.exp(np.min(epsilons)))
 
-    options = eng.optimoptions('fmincon', 'Algorithm', 'sqp')
-    [X, FVAL, EXITFLAG] = eng.fmincon(fun0, x_0, -1*A, -1*B, [], [], LB, UB, [], options)
-    return X, FVAL
+    # A = np.zeros((n_tiers**2, n_tiers))
+    # B = np.ones((n_tiers**2, 1))
+    # row = lambda x,y: x*n_tiers + y 
+    # for i in range(n_tiers):
+    #     for j in range(n_tiers):
+    #         if i == j:
+    #             A[row(i,j), i] = 1+np.exp(epsilons[i])
+    #         else:
+    #             A[row(i,j), i] = np.exp(np.min(epsilons[i], epsilons[j]))
+    #             A[row(i,j), j] = 1
+
+    # lower_bounds = np.zeros(n_tiers, 1)
+    # upper_bounds = .5*np.ones((n_tiers, 1))
+    # x_0 = np.power(np.exp(np.min(epsilons)))
+
+    # options = eng.optimoptions('fmincon', 'Algorithm', 'sqp')
+    # [X, FVAL, EXITFLAG] = eng.fmincon(fun0, x_0, -1*A, -1*B, [], [], lower_bounds, upper_bounds, [], options)
+    # return X, FVAL
 
 
 def gen_perturbation_probs(
@@ -175,8 +199,9 @@ def gen_perturbation_probs(
         domain_size = domain_size,
         total_records = total_records,
     )
-    print(config)
-    epsilons = privacy_budget*epsilon
+
+    epsilons = np.array(privacy_budget)*epsilon
+    args = [privacy_budget, n_tiers, tier_split_percentages, domain_size, total_records, tier_indices, alpha] = config.values()
     a, b = None, None
     if opt_mode == 0:
         X, pred_MSE = min_opt0(epsilons, **config)
@@ -188,7 +213,7 @@ def gen_perturbation_probs(
         b = np.power((1 + np.exp(X)), -1)
         #note this is not symmetric, is this supposed to be? wasn't written like that in their code....
     elif opt_mode == 2:
-        X, pred_MSE = min_opt1(epsilons, **config)
+        X, pred_MSE = min_opt2(epsilons, **config)
         a = np.ones((n_tiers, 1))
         b = X
     else:
@@ -199,4 +224,4 @@ def gen_perturbation_probs(
 
 
 
-print(gen_perturbation_probs(2, [1,1.2, 2]))
+gen_perturbation_probs(2, [1,1.2, 2], opt_mode=1)

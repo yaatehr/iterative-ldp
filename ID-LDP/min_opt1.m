@@ -1,5 +1,14 @@
-function [X,FVAL] = min_opt1(W,fun)
+function [X,FVAL,EXITFLAG] = min_opt1(W,alpha, fun)
 N_loc = length(W);
+
+% if exist('alpha','var') % # we need to make a defualt alpha arg switch the order so we can pass in alpha and not fun
+if exist('fun','var')
+    disp("fun exists")
+    % we are being called from python and the anonymous function cannot be passed.
+    fun = @(x) alpha*(exp(x)./((exp(x)-1).^2)); % symmetric
+else
+    fun = alpha % we are in matlab and teh functino was passed as an argument
+end
 
 row = @(i,j) N_loc*(i-1) + j; 
 
@@ -22,6 +31,6 @@ x0 = min(W)*ones(N_loc,1)/2;
 
 options = optimoptions('fmincon','Algorithm','sqp');
 [X,FVAL,EXITFLAG] = fmincon(fun,x0,A,b,[],[],LB,[],[],options);
-
+disp(FVAL)
 
 end

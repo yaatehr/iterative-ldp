@@ -1,8 +1,12 @@
-from typing import List, Any
+from typing import List, Any, Tuple
 import numpy as np
+import os
 
-
-
+# my server matlab install is at /usr/local/MATLAB/R2021a
+#somehow i have the matlab compiler and sdk and coder on there too
+#isntalling with communications toolbox, optimization toolbox, statistics and machine learning toolbox (also the sdks)
+#created the symlinks to matlab scripts
+#login name Yaateh-ubuntu
 # calling matlab from python 
 try:
     import matlab.engine
@@ -54,7 +58,7 @@ def create_config_dict(
 
     # create default tier split percentage (uniform)
     if not tier_split_percentages:
-        tier_split_percentages = [1/n_tiers for i in range(n_tiers)]
+        tier_split_percentages = np.array([1/n_tiers for i in range(n_tiers)])
         def normalize_list(l):
             remainder = 1 - np.sum(l)
             assert remainder >= 0, "lists to be mnormalized must have magnitude less than or equal to 1"
@@ -64,7 +68,10 @@ def create_config_dict(
     
     privacy_tier_indices = np.arange(domain_size)
     np.random.shuffle(privacy_tier_indices)
-    tier_indices = np.split(privacy_tier_indices, (tier_split_percentages*domain_size)[:-1])
+    print(privacy_tier_indices)
+    split_points = np.cumsum((tier_split_percentages*domain_size).astype(int))[:-1]
+    print(split_points)
+    tier_indices = np.split(privacy_tier_indices, split_points)
     return dict(
         privacy_budget= privacy_budget, #W
         n_tiers = n_tiers, #N_lev
@@ -88,6 +95,9 @@ def min_opt0(epsilons: float, **kwargs) -> Tuple[List[float], float]:
     X = [a_1,a_2 .... a_n_tiers, b_1, b_2, ... b_n_tiers]
     returns X, MSE
     """
+
+    args = [privacy_budget, n_tiers, tier_split_percentages, domain_size, total_records, tier_indices] = list(kwargs.values())
+    print(args)
     gen_constraints = lambda x: nonlcon(x, n_tiers, epsilons)
     upper_bounds = np.vstack((np.ones((n_tiers, 1)), .5*np.ones((n_tiers, 1))))
     lower_bounds = np.vstack((.5*np.ones((n_tiers,1)), np.zeros((n_tiers,1))))
@@ -165,6 +175,7 @@ def gen_perturbation_probs(
         domain_size = domain_size,
         total_records = total_records,
     )
+    print(config)
     epsilons = privacy_budget*epsilon
     a, b = None, None
     if opt_mode == 0:
@@ -186,3 +197,6 @@ def gen_perturbation_probs(
 
     return a, b, X, pred_MSE, config
 
+
+
+print(gen_perturbation_probs(2, [1,1.2, 2]))

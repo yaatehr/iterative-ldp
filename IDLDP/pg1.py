@@ -1,6 +1,7 @@
 from typing import List, Any, Tuple
 import numpy as np
 import os
+import matlab.engine
 
 # my server matlab install is at /usr/local/MATLAB/R2021a
 #somehow i have the matlab compiler and sdk and coder on there too
@@ -8,45 +9,21 @@ import os
 #created the symlinks to matlab scripts
 #login name Yaateh-ubuntu
 # calling matlab from python 
-try:
-    import matlab.engine
-    eng = matlab.engine.start_matlab()
-    MATLAB_ROOT = eng.matlabroot()
+class IDLDP:
+    def __init__(self):
+        eng = matlab.engine.start_matlab()
+        MATLAB_ROOT = eng.matlabroot()
 
-    optimization_path = os.path.join(MATLAB_ROOT, "toolbox", "shared", "optimlib")
-    stats_path = os.path.join(MATLAB_ROOT, "toolbox", "shared", "statslib")
-    # toolbox_path = os.path.join(MATLAB_ROOT, "toolbox", "shared", "statslib")
-    
-    eng.addpath(optimization_path)
-    eng.addpath(stats_path)
-    print(eng.fmincon)
-    print(eng.tabulate)
-    print(eng.randsrc)
-except Exception as e:
-    print(e)
-    print("Continuing without matlab")
-
-    
-def fun0(x: List[float], **kwargs):
-    alpha = domain_size * np.array(tier_split_percentages)
-    A, B = np.split(x, n_tiers)
-    quotient = np.divide((B - np.power(B, 2)), (A - np.power(A,2)))
-    maxes = np.max(np.divide((1-A)-B, A-B))
-    if debug:
-        print("debug output, shapes of alpha, quotient, and maxes")
-        print(alpha.shape)
-        print(quotient.shape)
-        print(maxes.shape)
-    return alpha@quotient + maxes
-
-def fun1(x: List[float], **kwargs):
-    alpha = domain_size * np.array(tier_split_percentages)
-    return alpha@np.div(np.exp(x), (np.exp(x)-1)^2)
- 
-def fun2(x: List[float], **kwargs):
-    alpha = domain_size * np.array(tier_split_percentages)
-    return alpha@np.div((x - x**2), (.5 - x)**2) + 1
-
+        optimization_path = os.path.join(MATLAB_ROOT, "toolbox", "shared", "optimlib")
+        stats_path = os.path.join(MATLAB_ROOT, "toolbox", "shared", "statslib")
+        # toolbox_path = os.path.join(MATLAB_ROOT, "toolbox", "shared", "statslib")
+        
+        eng.addpath(optimization_path)
+        eng.addpath(stats_path)
+        # print(eng.fmincon)
+        # print(eng.tabulate)
+        # print(eng.randsrc)
+        self.eng = eng
 
 def create_config_dict(
         privacy_budget: List[float],
@@ -69,11 +46,11 @@ def create_config_dict(
     privacy_tier_indices = np.arange(domain_size)
     np.random.shuffle(privacy_tier_indices)
     # print(privacy_tier_indices)
-    split_points = np.cumsum((tier_split_percentages*domain_size).astype(int))[:-1]
-    # print(split_points)
-    tier_indices = np.split(privacy_tier_indices, split_points)
     alpha = (domain_size * np.array(tier_split_percentages)).astype(int)
     alpha[-1] += domain_size - np.sum(alpha)
+    split_points = np.cumsum(alpha)[:-1]
+    # print(split_points)
+    tier_indices = np.split(privacy_tier_indices, split_points)
 
     return dict(
         privacy_budget= privacy_budget, #W
@@ -120,15 +97,6 @@ def min_opt0(epsilons: float, **kwargs) -> Tuple[List[float], float]:
     return x, mse
 
 
-def nonlcon(x, n_tiers, epsilons):
-    """
-    generate the non linear constraints for opt0
-    return c, ceq
-    """
-    A, B = np.split(x, n_tiers)
-    prod = A@(1-B)
-    exp = np.exp(np.outer.min(epsilons, epsilons))
-    return prod - exp@(B@(1-A)), []
     
 
 def min_opt1(epsilons: float, **kwargs) -> Tuple[List[float], float]:
@@ -218,10 +186,46 @@ def gen_perturbation_probs(
         b = X
     else:
         raise Exception("invalid opt mode")
-    
 
-    return a, b, X, pred_MSE, config
+    tier_vals = []
+    for i in range(len(tier_indices)):
+        tier_vals.append([i]*len(tier_indices[i]))
+    ind_to_tier = dict(zip(np.array(tier_indices).flatten(), np.array(tier_vals).flatten()))
+
+    config["a"] = a
+    config["b"] = b
+    config["ind_to_tier"] = ind_to_tier
+
+    return X, pred_MSE, config
 
 
+# def fun0(x: List[float], **kwargs):
+#     alpha = domain_size * np.array(tier_split_percentages)
+#     A, B = np.split(x, n_tiers)
+#     quotient = np.divide((B - np.power(B, 2)), (A - np.power(A,2)))
+#     maxes = np.max(np.divide((1-A)-B, A-B))
+#     if debug:
+#         print("debug output, shapes of alpha, quotient, and maxes")
+#         print(alpha.shape)
+#         print(quotient.shape)
+#         print(maxes.shape)
+#     return alpha@quotient + maxes
 
-gen_perturbation_probs(2, [1,1.2, 2], opt_mode=1)
+# def fun1(x: List[float], **kwargs):
+#     alpha = domain_size * np.array(tier_split_percentages)
+#     return alpha@np.div(np.exp(x), (np.exp(x)-1)^2)
+ 
+# def fun2(x: List[float], **kwargs):
+#     alpha = domain_size * np.array(tier_split_percentages)
+#     return alpha@np.div((x - x**2), (.5 - x)**2) + 1
+
+
+# def nonlcon(x, n_tiers, epsilons):
+#     """
+#     generate the non linear constraints for opt0
+#     return c, ceq
+#     """
+#     A, B = np.split(x, n_tiers)
+#     prod = A@(1-B)
+#     exp = np.exp(np.outer.min(epsilons, epsilons))
+#     return prod - exp@(B@(1-A)), []

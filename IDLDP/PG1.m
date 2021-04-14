@@ -67,15 +67,15 @@ for i = 1:N_epsilon
     b = ones(N_lev,1)/(exp(epsilon)+1);
     [MSE(2,i), ~] = actual_MSE(a,b,data,N_loc,W_list); %OUE
     
-    [X, result_min(1,i)] = min_opt0(temp,fun0); Xmin0(:,i) = X;
+    [X, result_min(1,i), ~] = min_opt0(temp,fun0); Xmin0(:,i) = X;
     a = X(1:N_lev); b = X((N_lev+1):end);
     [MSE_min(1,i), ~] = actual_MSE(a,b,data,N_loc,W_list);   %IDUE-opt0
     
-    [X, result_min(2,i)] = min_opt1(temp,fun1); Xmin1(:,i) = X;
+    [X, result_min(2,i), ~] = min_opt1(temp,fun1); Xmin1(:,i) = X;
     a = exp(X)./(1+exp(X)); b = 1./(1+exp(X));
     [MSE_min(2,i), ~] = actual_MSE(a,b,data,N_loc,W_list);%IDUE-opt1
     
-    [X, result_min(3,i)] = min_opt2(temp,fun2); Xmin2(:,i) = X;
+    [X, result_min(3,i), ~] = min_opt2(temp,fun2); Xmin2(:,i) = X;
     a = 0.5*ones(N_lev,1); b = X;
     [MSE_min(3,i), ~] = actual_MSE(a,b,data,N_loc,W_list); %IDUE-opt2
     

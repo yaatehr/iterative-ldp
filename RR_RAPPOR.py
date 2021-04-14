@@ -59,8 +59,27 @@ class RAPPOR:
         private_samples_rappor = np.zeros((n, self.absz))
         private_samples_rappor[users, samples] = 1
         # Flip the RAPPOR encoded bits with probability self.flip_prob
-        flip = np.random.random_sample((n, self.absz))
+        flip = np.random.random_sample((n, self.absz)) #fill matrix with random vals [0,1)
         return np.logical_xor(private_samples_rappor, flip < self.flip_prob)
+
+
+    def id_ldp_perturb(self, samples, **kwargs):
+        args = [privacy_budget, n_tiers, tier_split_percentages, domain_size, total_records, tier_indices, alpha, a, b, ind_to_tier] = list(kwargs.values())
+        
+        n = len(samples)
+        users = range(n)
+        # One-hot encode the input integers.
+        private_samples_rappor = np.zeros((n, self.absz))
+        private_samples_rappor[users, samples] = 1
+        flip = np.random.random_sample((n, self.absz)) #fill matrix with random vals [0,1)
+
+        sample_tiers = np.vectorize(ind_to_tier.__getitem__)(samples)
+        sample_b_flip = np.tile(b, (n, 1))[:, sample_tiers]
+        sample_a_1_pr = np.tile(a, (n, 1))[:, sample_tiers]
+        perturbed = np.logical_xor(private_samples_rappor, flip < sample_b_flip)# perturb the b indices
+        perturbed[np.ix_(users, samples)] = np.random.random_sample((n,1)) < sample_a_1_pr #perturb the a indices
+        return perturbed
+
 
 
     def encode_string_light(self, samples):

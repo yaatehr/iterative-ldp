@@ -21,7 +21,7 @@ UB = [ones(N_loc,1); 0.5*ones(N_loc,1)];
 
 x0 = [0.5*ones(N_loc,1); 1/(1+exp(min(W)))*ones(N_loc,1)];
 options = optimoptions('fmincon','Algorithm','sqp');
-[X,FVAL] = fmincon(fun,x0,[],[],[],[],LB,UB,c,options);
+[X,FVAL,EXITFLAG] = fmincon(fun,x0,[],[],[],[],LB,UB,c,options);
 disp(FVAL)
 end
 

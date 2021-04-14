@@ -1,4 +1,4 @@
-function [X,FVAL,EXITFLAG] = min_opt1(W,alpha, fun)
+function [X,FVAL,EXITFLAG] = min_opt1(W, alpha, fun)
 N_loc = length(W);
 
 % if exist('alpha','var') % # we need to make a defualt alpha arg switch the order so we can pass in alpha and not fun

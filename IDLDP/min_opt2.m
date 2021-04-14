@@ -5,7 +5,7 @@ N_loc = length(W);
 if exist('fun','var')
     disp("fun exists")
     % we are being called from python and the anonymous function cannot be passed.
-    fun2 = @(b) alpha*((b-b.^2)./((0.5-b).^2)) + 1; % a = 0.5
+    fun = @(b) alpha*((b-b.^2)./((0.5-b).^2)) + 1; % a = 0.5
 else
     fun = alpha % we are in matlab and teh functino was passed as an argument
 end

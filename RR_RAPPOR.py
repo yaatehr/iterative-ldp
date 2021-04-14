@@ -74,9 +74,16 @@ class RAPPOR:
         flip = np.random.random_sample((n, self.absz)) #fill matrix with random vals [0,1)
 
         sample_tiers = np.vectorize(ind_to_tier.__getitem__)(samples)
-        sample_b_flip = np.tile(b, (n, 1))[:, sample_tiers]
-        sample_a_1_pr = np.tile(a, (n, 1))[:, sample_tiers]
-        perturbed = np.logical_xor(private_samples_rappor, flip < sample_b_flip)# perturb the b indices
+        print(b.shape)
+        print(a.shape)
+        tb =  np.tile(b.T, (n, 1))
+        print(tb.shape)
+        ta = np.tile(a.T, (n, 1))
+        print(ta.shape)
+        sample_b_flip = tb[users, sample_tiers].reshape((n,1)) #TODO at 100k samples, this tries to allocate 200GiB sized arrays which causes an error
+        sample_a_1_pr = ta[users, sample_tiers].reshape((n,1))
+        print(sample_b_flip.shape)
+        perturbed = np.logical_xor(private_samples_rappor, np.less(flip, sample_b_flip, out=flip))# perturb the b indices
         perturbed[np.ix_(users, samples)] = np.random.random_sample((n,1)) < sample_a_1_pr #perturb the a indices
         return perturbed
 

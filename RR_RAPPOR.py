@@ -81,6 +81,8 @@ class RAPPOR:
         ta = np.tile(a.T, (n, 1))
         print(ta.shape)
         sample_b_flip = tb[users, sample_tiers].reshape((n,1)) #TODO at 100k samples, this tries to allocate 200GiB sized arrays which causes an error
+        # potentially see example here: https://stackoverflow.com/questions/39611045/use-multi-processing-threading-to-break-numpy-array-operation-into-chunks
+        
         sample_a_1_pr = ta[users, sample_tiers].reshape((n,1))
         print(sample_b_flip.shape)
         perturbed = np.logical_xor(private_samples_rappor, np.less(flip, sample_b_flip, out=flip))# perturb the b indices

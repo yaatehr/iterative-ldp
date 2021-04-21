@@ -160,6 +160,24 @@ class RAPPOR:
         
         n = len(out_samples)
         (counts_rr,temp) = np.histogram(out_samples, range(self.absz+1))
+
+
+        #TODO compute the estimate sfor OUE
+    # def aggregate(self, priv_data):
+    #     """
+    #     Used to aggregate privatised data by ue_client.privatise
+    #     Args:
+    #         priv_data: privatised data from ue_client.privatise
+    #     """
+    #     self.aggregated_data += priv_data
+    #     self.n += 1
+
+    # def _update_estimates(self):
+    #     self.estimated_data = (self.aggregated_data - self.n * self.q) / (self.p - self.q)
+    #     return self.estimated_data
+
+
+        # This will work for Rappor and optimized rappor but not for OUE
         p_rappor = (counts / float(n)) * ((self.exp + 1) /(self.exp - 1)) - 1.0 / (self.exp - 1)
         
         if normalization == 0: 

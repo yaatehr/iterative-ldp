@@ -147,7 +147,7 @@ class IDLDP:
             a = .75
             b = .25
 
-        elif opt_mode == 4:
+        elif opt_mode == 4: #TODO Note
             #OUE BASIC
             a = 1/2 #this is the probabilty a 1 stays a 1. so this is p in the USNIX (they end up being the same....)
             b = 1/(np.exp(epsilon) + 1) # this is flipping 0 to 1, which is equal to q in rapport and USENIX

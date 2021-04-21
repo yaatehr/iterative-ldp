@@ -59,6 +59,7 @@ class IDLDP:
         # print(eng.tabulate)
         # print(eng.randsrc)
         self.eng = eng
+        print("IDLDP INIT SUCCESSFUL, toolboxes added")
 
     @staticmethod
     def create_config_dict(
@@ -150,6 +151,8 @@ class IDLDP:
 
         epsilons = np.array(privacy_budget)*epsilon
         args = [privacy_budget, n_tiers, tier_split_percentages, domain_size, total_records, tier_indices, alpha] = config.values()
+        print(config)
+        print(f"starting optimization for opt mode {opt_mode}")
         a, b, ind_to_tier = None, None, None
         if opt_mode == 0:
             X, pred_MSE = self.min_opt0(epsilons, **config)
@@ -164,15 +167,20 @@ class IDLDP:
             X, pred_MSE = self.min_opt2(epsilons, **config)
             a = np.ones((n_tiers, 1))
             b = X
+            pred_MSE = None
         elif opt_mode == 3:
             # RAPPOR BASIC
             a = .75
             b = .25
+            X = None
+            pred_MSE = None
 
         elif opt_mode == 4: #TODO Note
             #OUE BASIC
             a = .5 #this is the probabilty a 1 stays a 1. so this is p in the USNIX (they end up being the same....)
             b = 1/(np.exp(epsilon) + 1) # this is flipping 0 to 1, which is equal to q in rapport and USENIX
+            X = None
+            pred_MSE = None
         else:
             raise Exception("invalid opt mode")
 
@@ -192,17 +200,17 @@ class IDLDP:
 
         return X, pred_MSE, config
 
-privacy_budget = [1, 1.2, 2]
-tier_split_percentages = [.05, .05, .9]
-domain_size = 100
-total_records = 10000
-opt_mode = 1
+# privacy_budget = [1, 1.2, 2]
+# tier_split_percentages = [.05, .05, .9]
+# domain_size = 100
+# total_records = 10000
+# opt_mode = 1
 
-IDLDP().gen_perturbation_probs(
-  2,
-  privacy_budget,
-  tier_split_percentages=None,
-  domain_size=domain_size,
-  total_records = total_records,
-  opt_mode = 1,
-)
+# IDLDP().gen_perturbation_probs(
+#   2,
+#   privacy_budget,
+#   tier_split_percentages=None,
+#   domain_size=domain_size,
+#   total_records = total_records,
+#   opt_mode = 1,
+# )

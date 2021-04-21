@@ -55,7 +55,7 @@ class RAPPOR:
         self.a = None
         self.b = None
         if config is not None:
-            self.update_config(config)
+            self.update_config(**config)
     def encode_string(self, samples):
         n = len(samples)
         users = range(n)
@@ -74,23 +74,25 @@ class RAPPOR:
         n = len(samples)
         users = range(n)
         # One-hot encode the input integers.
-        private_samples_rappor = np.zeros((n, self.absz))
+        private_samples_rappor = np.zeros((n, self.absz),  dtype="uint8")
         private_samples_rappor[users, samples] = 1
         flip = np.random.random_sample((n, self.absz)) #fill matrix with random vals [0,1)
+        if self.a is None or self.b is None:
+            raise Exception("A and B are not set")
         if self.ind_to_tier is not None:
-            sample_tiers = np.vectorize(self.ind_to_tier.__getitem__)(samples)
+            sample_tiers = np.vectorize(self.ind_to_tier.__getitem__)(samples).astype("uint8")
             # print(b.shape)
             # print(a.shape)
-            tb =  np.tile(self.b.T, (n, 1))
+            tb =  np.tile(self.b.T, (n, 1), dtype="float32")
             # print(tb.shape)
-            ta = np.tile(self.a.T, (n, 1))
+            ta = np.tile(self.a.T, (n, 1),  dtype="float32")
             # print(ta.shape)
             sample_b_flip = tb[users, sample_tiers].reshape((n,1)) #TODO at 100k samples, this tries to allocate 200GiB sized arrays which causes an error
             # potentially see example here: https://stackoverflow.com/questions/39611045/use-multi-processing-threading-to-break-numpy-array-operation-into-chunks
             sample_a_1_pr = ta[users, sample_tiers].reshape((n,1))
         else:
-            sample_b_flip = np.tile(self.b, (n,1)).reshape((n,1))
-            sample_a_1_pr = np.tile(self.a, (n,1)).reshape((n,1))
+            sample_b_flip = np.tile(self.b, (n,1),  dtype="float32").reshape((n,1))
+            sample_a_1_pr = np.tile(self.a, (n,1),  dtype="float32").reshape((n,1))
         # print(sample_b_flip.shape)
         perturbed = np.logical_xor(private_samples_rappor, np.less(flip, sample_b_flip, out=flip))# perturb the b indices
         perturbed[np.ix_(users, samples)] = np.random.random_sample((n,1)) < sample_a_1_pr #perturb the a indices

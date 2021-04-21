@@ -17,7 +17,29 @@ def sigmoid(x: float):
 def matlab_to_numpy(mlarray):
     return np.array(mlarray._data).reshape(mlarray.size, order='F')
 
+LDP_MECHANISMS = [ "hadamard", "oue_basic", "rappor_basic", "idldp_opt0", "rappor_idldp_opt1", "oue_idldp_opt_2"]
 
+def ldp_mechanism_helper(ldp_mechanism: string):
+    """
+    take in mechanism string and return the opt_mode integer for idldp/rappor config.
+    if hadamard return -1. 
+    """
+    assert ldp_mechanism in LDP_MECHANISMS, f'ldp mechanism must be one of {LDP_MECHANISMS} but got {ldp_mechanism}'
+    ldp_index = LDP_MECHANISMS.index(ldp_mechanism)
+    if ldp_index == 0:
+        return -1
+    elif ldp_index == 1:
+        return 4
+    elif ldp_index == 2:
+        return 3
+    elif ldp_index == 3:
+        return 0
+    elif ldp_index == 4:
+        return 1
+    elif ldp_index == 5:
+        return 2
+    else:
+        raise Exception(f"LDP MECHANISM NOT FOUND, please use of of {LDP_MECHANISMS} or update logic")
 
 class IDLDP:
     def __init__(self):
@@ -116,7 +138,7 @@ class IDLDP:
             total_records: int = 100000,
             opt_mode: int = 0,
         ):
-        assert opt_mode in range(5), "opt mode must be 1,2, or 3"
+        assert opt_mode in range(5), "opt mode must be 0 to 4"
 
 
         config = self.create_config_dict(
@@ -149,7 +171,7 @@ class IDLDP:
 
         elif opt_mode == 4: #TODO Note
             #OUE BASIC
-            a = 1/2 #this is the probabilty a 1 stays a 1. so this is p in the USNIX (they end up being the same....)
+            a = .5 #this is the probabilty a 1 stays a 1. so this is p in the USNIX (they end up being the same....)
             b = 1/(np.exp(epsilon) + 1) # this is flipping 0 to 1, which is equal to q in rapport and USENIX
         else:
             raise Exception("invalid opt mode")

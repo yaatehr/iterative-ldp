@@ -2,7 +2,7 @@ from typing import List, Any, Tuple
 import numpy as np
 import os
 import matlab.engine
-
+# import math
 # my server matlab install is at /usr/local/MATLAB/R2021a
 #somehow i have the matlab compiler and sdk and coder on there too
 #isntalling with communications toolbox, optimization toolbox, statistics and machine learning toolbox (also the sdks)
@@ -116,7 +116,9 @@ class IDLDP:
             total_records: int = 100000,
             opt_mode: int = 0,
         ):
-        assert opt_mode in range(3), "opt mode must be 1,2, or 3"
+        assert opt_mode in range(5), "opt mode must be 1,2, or 3"
+
+
         config = self.create_config_dict(
             privacy_budget=privacy_budget,
             tier_split_percentages = tier_split_percentages,
@@ -126,7 +128,7 @@ class IDLDP:
 
         epsilons = np.array(privacy_budget)*epsilon
         args = [privacy_budget, n_tiers, tier_split_percentages, domain_size, total_records, tier_indices, alpha] = config.values()
-        a, b = None, None
+        a, b, ind_to_tier = None, None, None
         if opt_mode == 0:
             X, pred_MSE = self.min_opt0(epsilons, **config)
             a = np.ones((n_tiers,1))*sigmoid(epsilon/2)
@@ -140,15 +142,27 @@ class IDLDP:
             X, pred_MSE = self.min_opt2(epsilons, **config)
             a = np.ones((n_tiers, 1))
             b = X
+        elif opt_mode == 3:
+            # RAPPOR BASIC
+            a = .75
+            b = .25
+
+        elif opt_mode == 4:
+            #OUE BASIC
+            a = 1/2 #this is the probabilty a 1 stays a 1. so this is p in the USNIX (they end up being the same....)
+            b = 1/(np.exp(epsilon) + 1) # this is flipping 0 to 1, which is equal to q in rapport and USENIX
         else:
             raise Exception("invalid opt mode")
 
-        tier_vals = []
-        # print(tier_indices)
-        for i in range(len(tier_indices)):
-            tier_vals.append([i]*len(tier_indices[i]))
+        if opt_mode < 3:
+            tier_vals = []
+            # print(tier_indices)
+            for i in range(len(tier_indices)):
+                tier_vals.append([i]*len(tier_indices[i]))
 
-        ind_to_tier = dict(zip(np.concatenate(tier_indices).ravel().tolist(), np.concatenate(tier_vals).ravel().tolist()))
+            ind_to_tier = dict(zip(np.concatenate(tier_indices).ravel().tolist(), np.concatenate(tier_vals).ravel().tolist()))
+        else:
+            ind_to_tier = None
 
         config["a"] = a
         config["b"] = b

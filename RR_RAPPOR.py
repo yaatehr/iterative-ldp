@@ -51,7 +51,9 @@ class RAPPOR:
         self.absz = absz #alphabet size k
         self.exp = math.exp(pri_para / 2.0) #privacy parameter
         self.flip_prob = 1/(math.exp(pri_para/2.0) + 1) #flipping probability to maintain local privacy
-
+        self.ind_to_tier = None
+        self.a = None
+        self.b = None
     def encode_string(self, samples):
         n = len(samples)
         users = range(n)
@@ -64,7 +66,8 @@ class RAPPOR:
 
 
     def id_ldp_perturb(self, samples, **kwargs):
-        args = [privacy_budget, n_tiers, tier_split_percentages, domain_size, total_records, tier_indices, alpha, a, b, ind_to_tier] = list(kwargs.values())
+        if kwargs is not None:
+            self.update_config(**kwargs)
         
         n = len(samples)
         users = range(n)
@@ -72,23 +75,30 @@ class RAPPOR:
         private_samples_rappor = np.zeros((n, self.absz))
         private_samples_rappor[users, samples] = 1
         flip = np.random.random_sample((n, self.absz)) #fill matrix with random vals [0,1)
-
-        sample_tiers = np.vectorize(ind_to_tier.__getitem__)(samples)
-        print(b.shape)
-        print(a.shape)
-        tb =  np.tile(b.T, (n, 1))
-        print(tb.shape)
-        ta = np.tile(a.T, (n, 1))
-        print(ta.shape)
-        sample_b_flip = tb[users, sample_tiers].reshape((n,1)) #TODO at 100k samples, this tries to allocate 200GiB sized arrays which causes an error
-        # potentially see example here: https://stackoverflow.com/questions/39611045/use-multi-processing-threading-to-break-numpy-array-operation-into-chunks
-        
-        sample_a_1_pr = ta[users, sample_tiers].reshape((n,1))
-        print(sample_b_flip.shape)
+        if self.ind_to_tier is not None:
+            sample_tiers = np.vectorize(self.ind_to_tier.__getitem__)(samples)
+            # print(b.shape)
+            # print(a.shape)
+            tb =  np.tile(self.b.T, (n, 1))
+            # print(tb.shape)
+            ta = np.tile(self.a.T, (n, 1))
+            # print(ta.shape)
+            sample_b_flip = tb[users, sample_tiers].reshape((n,1)) #TODO at 100k samples, this tries to allocate 200GiB sized arrays which causes an error
+            # potentially see example here: https://stackoverflow.com/questions/39611045/use-multi-processing-threading-to-break-numpy-array-operation-into-chunks
+            sample_a_1_pr = ta[users, sample_tiers].reshape((n,1))
+        else:
+            sample_b_flip = np.tile(self.b, (n,1)).reshape((n,1))
+            sample_a_1_pr = np.tile(self.a, (n,1)).reshape((n,1))
+        # print(sample_b_flip.shape)
         perturbed = np.logical_xor(private_samples_rappor, np.less(flip, sample_b_flip, out=flip))# perturb the b indices
         perturbed[np.ix_(users, samples)] = np.random.random_sample((n,1)) < sample_a_1_pr #perturb the a indices
         return perturbed
 
+    def update_config(self, **kwargs):
+        args = [privacy_budget, n_tiers, tier_split_percentages, domain_size, total_records, tier_indices, alpha, a, b, ind_to_tier] = list(kwargs.values())
+        self.a = a
+        self.b = b
+        self.ind_to_tier = ind_to_tier
 
 
     def encode_string_light(self, samples):
@@ -132,6 +142,24 @@ class RAPPOR:
         #                       else: no nomalization
         # Estimate the PMF using the count vector
         
+        p_rappor = (counts / float(n)) * ((self.exp + 1) /(self.exp - 1)) - 1.0 / (self.exp - 1)
+        
+        if normalization == 0: 
+            p_rappor = probability_normalize(p_rappor) #clip and normalize
+        if normalization == 1:
+            p_rappor = project_probability_simplex(p_rappor) #simplex projection
+
+        return p_rappor
+
+    def decode_string(self, counts, n, normalization = 0):
+
+        #normalization options: 0: clip and normalize(default)
+        #                       1: simplex projection
+        #                       else: no nomalization
+        # Estimate the PMF using the count vector
+        
+        n = len(out_samples)
+        (counts_rr,temp) = np.histogram(out_samples, range(self.absz+1))
         p_rappor = (counts / float(n)) * ((self.exp + 1) /(self.exp - 1)) - 1.0 / (self.exp - 1)
         
         if normalization == 0: 

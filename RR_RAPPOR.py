@@ -47,13 +47,15 @@ class Randomized_Response:
         return p_rr
     
 class RAPPOR:
-    def __init__(self, absz, pri_para): # absz: alphabet size, pri_para: privacy parameter
+    def __init__(self, absz, pri_para, config=None): # absz: alphabet size, pri_para: privacy parameter
         self.absz = absz #alphabet size k
         self.exp = math.exp(pri_para / 2.0) #privacy parameter
         self.flip_prob = 1/(math.exp(pri_para/2.0) + 1) #flipping probability to maintain local privacy
         self.ind_to_tier = None
         self.a = None
         self.b = None
+        if config is not None:
+            self.update_config(config)
     def encode_string(self, samples):
         n = len(samples)
         users = range(n)

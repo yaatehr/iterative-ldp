@@ -19,7 +19,7 @@ def matlab_to_numpy(mlarray):
 
 LDP_MECHANISMS = [ "hadamard", "oue_basic", "rappor_basic", "idldp_opt0", "rappor_idldp_opt1", "oue_idldp_opt_2"]
 
-def ldp_mechanism_helper(ldp_mechanism: string):
+def ldp_mechanism_helper(ldp_mechanism: str):
     """
     take in mechanism string and return the opt_mode integer for idldp/rappor config.
     if hadamard return -1. 

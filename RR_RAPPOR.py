@@ -55,11 +55,14 @@ class RAPPOR:
         self.a = None
         self.b = None
         if config is not None:
+            print(config)
             self.update_config(**config)
     def encode_string(self, samples):
         n = len(samples)
         users = range(n)
         # One-hot encode the input integers.
+        print(samples)
+        print(self.absz)
         private_samples_rappor = np.zeros((n, self.absz))
         private_samples_rappor[users, samples] = 1
         # Flip the RAPPOR encoded bits with probability self.flip_prob
@@ -74,6 +77,8 @@ class RAPPOR:
         n = len(samples)
         users = range(n)
         # One-hot encode the input integers.
+        print(samples.tolist())
+        print(self.absz)
         private_samples_rappor = np.zeros((n, self.absz),  dtype="uint8")
         private_samples_rappor[users, samples] = 1
         flip = np.random.random_sample((n, self.absz)) #fill matrix with random vals [0,1)
@@ -83,16 +88,16 @@ class RAPPOR:
             sample_tiers = np.vectorize(self.ind_to_tier.__getitem__)(samples).astype("uint8")
             # print(b.shape)
             # print(a.shape)
-            tb =  np.tile(self.b.T, (n, 1), dtype="float32")
+            tb =  np.tile(self.b.T.astype("float32"), (n, 1))
             # print(tb.shape)
-            ta = np.tile(self.a.T, (n, 1),  dtype="float32")
+            ta = np.tile(self.a.T.astype("float32"), (n, 1))
             # print(ta.shape)
             sample_b_flip = tb[users, sample_tiers].reshape((n,1)) #TODO at 100k samples, this tries to allocate 200GiB sized arrays which causes an error
             # potentially see example here: https://stackoverflow.com/questions/39611045/use-multi-processing-threading-to-break-numpy-array-operation-into-chunks
             sample_a_1_pr = ta[users, sample_tiers].reshape((n,1))
         else:
-            sample_b_flip = np.tile(self.b, (n,1),  dtype="float32").reshape((n,1))
-            sample_a_1_pr = np.tile(self.a, (n,1),  dtype="float32").reshape((n,1))
+            sample_b_flip = np.tile(self.b, (n,1)).reshape((n,1)).astype("float32")
+            sample_a_1_pr = np.tile(self.a, (n,1)).reshape((n,1)).astype("float32")
         # print(sample_b_flip.shape)
         perturbed = np.logical_xor(private_samples_rappor, np.less(flip, sample_b_flip, out=flip))# perturb the b indices
         perturbed[np.ix_(users, samples)] = np.random.random_sample((n,1)) < sample_a_1_pr #perturb the a indices
@@ -155,7 +160,7 @@ class RAPPOR:
 
         return p_rappor
 
-    def decode_string(self, counts, n, normalization = 0):
+    def decode_string(self, out_samples, normalization = 0):
 
         #normalization options: 0: clip and normalize(default)
         #                       1: simplex projection
@@ -164,6 +169,7 @@ class RAPPOR:
         
         n = len(out_samples)
         (counts_rr,temp) = np.histogram(out_samples, range(self.absz+1))
+        # print(counts_rr)
 
 
         #TODO compute the estimate sfor OUE
@@ -177,16 +183,18 @@ class RAPPOR:
     #     self.n += 1
 
     # def _update_estimates(self):
-    #     self.estimated_data = (self.aggregated_data - self.n * self.q) / (self.p - self.q)
-    #     return self.estimated_data
+        p_rappor = (counts_rr - n * self.b) / (self.a - self.b)
+        # print(p_rappor)
 
 
-        # This will work for Rappor and optimized rappor but not for OUE
-        p_rappor = (counts / float(n)) * ((self.exp + 1) /(self.exp - 1)) - 1.0 / (self.exp - 1)
+
+        # # This will work for Rappor and optimized rappor but not for OUE
+        # p_rappor = (counts / float(n)) * ((self.exp + 1) /(self.exp - 1)) - 1.0 / (self.exp - 1)
         
         if normalization == 0: 
             p_rappor = probability_normalize(p_rappor) #clip and normalize
         if normalization == 1:
             p_rappor = project_probability_simplex(p_rappor) #simplex projection
-
+        # print(p_rappor)
+        # raise Exception("over")
         return p_rappor

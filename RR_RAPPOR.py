@@ -47,47 +47,64 @@ class Randomized_Response:
         return p_rr
     
 class RAPPOR:
-    def __init__(self, absz, pri_para, config=None): # absz: alphabet size, pri_para: privacy parameter
+    def __init__(self, absz, pri_para, config=None, input_map=None): # absz: alphabet size, pri_para: privacy parameter
         self.absz = absz #alphabet size k
+        self.pri_para = pri_para
         self.exp = math.exp(pri_para / 2.0) #privacy parameter
         self.flip_prob = 1/(math.exp(pri_para/2.0) + 1) #flipping probability to maintain local privacy
         self.ind_to_tier = None
         self.a = None
         self.b = None
+        # print(config)
+        # print(pri_para)
+        self.input_map = input_map #if input_map is not None else {i: i for i in range(self.absz)}
         if config is not None:
-            print(config)
+            # print(config)
             self.update_config(**config)
-    def encode_string(self, samples):
-        n = len(samples)
-        users = range(n)
-        # One-hot encode the input integers.
-        print(samples)
-        print(self.absz)
-        private_samples_rappor = np.zeros((n, self.absz))
-        private_samples_rappor[users, samples] = 1
-        # Flip the RAPPOR encoded bits with probability self.flip_prob
-        flip = np.random.random_sample((n, self.absz)) #fill matrix with random vals [0,1)
-        return np.logical_xor(private_samples_rappor, flip < self.flip_prob)
+    # def encode_string(self, samples):
+    #     n = len(samples)
+    #     users = range(n)
+    #     # One-hot encode the input integers.
+    #     print(samples)
+    #     print(self.absz)
+    #     private_samples_rappor = np.zeros((n, self.absz))
+    #     private_samples_rappor[users, samples] = 1
+    #     # Flip the RAPPOR encoded bits with probability self.flip_prob
+    #     flip = np.random.random_sample((n, self.absz)) #fill matrix with random vals [0,1)
+    #     return np.logical_xor(private_samples_rappor, flip < self.flip_prob)
 
 
-    def id_ldp_perturb(self, samples, **kwargs):
-        if kwargs is not None:
-            self.update_config(**kwargs)
+    def encode_string(self, samples, config=None):
+        if config is not None:
+            self.update_config(**config)
         
         n = len(samples)
+        if not n:
+            return None
         users = range(n)
         # One-hot encode the input integers.
-        print(samples.tolist())
-        print(self.absz)
+        # print(samples.tolist())
+        # print(self.absz)
+        inputs = np.vectorize(self.input_map.__getitem__)(samples).astype("uint8") if self.input_map is not None else samples
+        # print(inputs)
         private_samples_rappor = np.zeros((n, self.absz),  dtype="uint8")
-        private_samples_rappor[users, samples] = 1
+        private_samples_rappor[users, inputs] = 1
+        oue_mode = False
         flip = np.random.random_sample((n, self.absz)) #fill matrix with random vals [0,1)
         if self.a is None or self.b is None:
-            raise Exception("A and B are not set")
-        if self.ind_to_tier is not None:
-            sample_tiers = np.vectorize(self.ind_to_tier.__getitem__)(samples).astype("uint8")
+            self.a = .5 #this is the probabilty a 1 stays a 1. so this is p in the USNIX (they end up being the same....)
+            self.b = 1/(np.exp(self.pri_para) + 1)
+            oue_mode = True
+            # print("A and B are not set, defaulting to OUE")
+        if self.input_map is not None or oue_mode:
             # print(b.shape)
             # print(a.shape)
+            # print(self.b.shape)
+            # print(self.a.shape)
+            sample_b_flip = np.tile(self.b, (n,1)).reshape((n,1)).astype("float32")
+            sample_a_1_pr = np.tile(self.a, (n,1)).reshape((n,1)).astype("float32")
+        else:
+            sample_tiers = np.vectorize(self.ind_to_tier.__getitem__)(samples).astype("uint8")
             tb =  np.tile(self.b.T.astype("float32"), (n, 1))
             # print(tb.shape)
             ta = np.tile(self.a.T.astype("float32"), (n, 1))
@@ -95,12 +112,11 @@ class RAPPOR:
             sample_b_flip = tb[users, sample_tiers].reshape((n,1)) #TODO at 100k samples, this tries to allocate 200GiB sized arrays which causes an error
             # potentially see example here: https://stackoverflow.com/questions/39611045/use-multi-processing-threading-to-break-numpy-array-operation-into-chunks
             sample_a_1_pr = ta[users, sample_tiers].reshape((n,1))
-        else:
-            sample_b_flip = np.tile(self.b, (n,1)).reshape((n,1)).astype("float32")
-            sample_a_1_pr = np.tile(self.a, (n,1)).reshape((n,1)).astype("float32")
+
         # print(sample_b_flip.shape)
         perturbed = np.logical_xor(private_samples_rappor, np.less(flip, sample_b_flip, out=flip))# perturb the b indices
-        perturbed[np.ix_(users, samples)] = np.random.random_sample((n,1)) < sample_a_1_pr #perturb the a indices
+        perturbed[np.ix_(users, inputs)] = np.random.random_sample((n,1)) < sample_a_1_pr #perturb the a indices
+        # print(perturbed.shape)
         return perturbed
 
     def update_config(self, **kwargs):
@@ -166,8 +182,12 @@ class RAPPOR:
         #                       1: simplex projection
         #                       else: no nomalization
         # Estimate the PMF using the count vector
-        
+        if out_samples is None:
+            output = np.empty(self.absz)
+            output[:] = np.nan
+            return output
         n = len(out_samples)
+        # print(self.input_map)
         (counts_rr,temp) = np.histogram(out_samples, range(self.absz+1))
         # print(counts_rr)
 
@@ -184,7 +204,10 @@ class RAPPOR:
 
     # def _update_estimates(self):
         p_rappor = (counts_rr - n * self.b) / (self.a - self.b)
+        # print("p rappor size: \n")
+        # print(p_rappor.shape)
         # print(p_rappor)
+        # print("\n\n")
 
 
 

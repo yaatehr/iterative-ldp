@@ -170,8 +170,8 @@ class IDLDP:
             pred_MSE = None
         elif opt_mode == 3:
             # RAPPOR BASIC
-            a = .75
-            b = .25
+            a = sigmoid(epsilon/2)
+            b = 1-a
             X = None
             pred_MSE = None
 

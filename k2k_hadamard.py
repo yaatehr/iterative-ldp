@@ -26,7 +26,7 @@ from functions import *
 
 #the Hadamard randamized responce when \epsilon < 1
 class Hadamard_Rand_high_priv:
-    def __init__(self, absz, pri_para, encode_acc = 0): # absz: alphabet size, pri_para: privacy parameter
+    def __init__(self, absz, pri_para, encode_acc = 0, **kwargs): # absz: alphabet size, pri_para: privacy parameter
         #set encode_acc = 1 to enable fast encoding by intializing hadamard matrix
         self.insz = absz #input alphabet size k
         self.outsz = int(math.pow(2,math.ceil(math.log(absz+1,2)))) #output alphabet size: smallest exponent of 2 which is bigger than k
@@ -76,11 +76,11 @@ class Hadamard_Rand_high_priv:
             else:
                 return out1       
      
-    def encode_string(self,in_list):  # encode string into a privatized string
+    def encode_string(self,in_list, **kwargs):  # encode string into a privatized string
         out_list = [self.encode_symbol(x) for x in in_list] # encode each symbol in the string
         return out_list
     
-    def decode_string(self, out_list, iffast = 1, normalization = 0): # get the privatized string and learn the original distribution
+    def decode_string(self, out_list, iffast = 1, normalization = 0, **kwargs): # get the privatized string and learn the original distribution
         #normalization options: 0: clip and normalize(default)
         #                       1: simplex projection
         #                       else: no nomalization

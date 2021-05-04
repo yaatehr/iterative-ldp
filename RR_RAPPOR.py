@@ -9,7 +9,7 @@ from functions import *
 
 #The class for Randomized Response:
 class Randomized_Response:
-    def __init__(self, absz, pri_para): # absz: alphabet size, pri_para: privacy parameter
+    def __init__(self, absz, pri_para, **kwargs): # absz: alphabet size, pri_para: privacy parameter
         self.absz = absz #alphabet size k
         self.exp = math.exp(pri_para) #privacy parameter
         self.flip_prob = (self.absz - 1)/(math.exp(pri_para) + self.absz - 1) #flipping probability to maintain local privacy
@@ -47,7 +47,7 @@ class Randomized_Response:
         return p_rr
     
 class RAPPOR:
-    def __init__(self, absz, pri_para, config=None, input_map=None): # absz: alphabet size, pri_para: privacy parameter
+    def __init__(self, absz, pri_para, config=None, input_map=None, **kwargs): # absz: alphabet size, pri_para: privacy parameter
         self.absz = absz #alphabet size k
         self.pri_para = pri_para
         self.exp = math.exp(pri_para / 2.0) #privacy parameter
@@ -176,7 +176,7 @@ class RAPPOR:
 
         return p_rappor
 
-    def decode_string(self, out_samples, normalization = 0):
+    def decode_string(self, out_samples, normalization = 0, **kwargs):
 
         #normalization options: 0: clip and normalize(default)
         #                       1: simplex projection
@@ -221,3 +221,18 @@ class RAPPOR:
         # print(p_rappor)
         # raise Exception("over")
         return p_rappor
+
+class MetaEstimator:
+    def __init__(self, absz, pri_para, config=None, input_map=None, estimator_class=None, p=10):
+        assert estimator_class is not None, 'estimator class must be a valid class'
+
+        self.p = p
+        self.epsilon = pri_para / p
+        self.estimators = [estimator_class(absz, self.epsilon, config=config, input_map=input_map) for _ in range(p)]
+
+    def encode_string(self, samples, config=None):
+        return [e.encode_string(samples, config=config) for e in self.estimators]
+
+    def decode_string(self, encodings, **kwargs):
+        distributions = [e.decode_string(encodings[i], **kwargs)for i, e in enumerate(self.estimators)]
+        return np.sum(np.vstack(tuple(distributions)), axis=0) / self.p

@@ -114,10 +114,18 @@ class RAPPOR:
             sample_a_1_pr = ta[users, sample_tiers].reshape((n,1))
 
         # print(sample_b_flip.shape)
-        perturbed = np.logical_xor(private_samples_rappor, np.less(flip, sample_b_flip, out=flip))# perturb the b indices
-        perturbed[np.ix_(users, inputs)] = np.random.random_sample((n,1)) < sample_a_1_pr #perturb the a indices
-        # print(perturbed.shape)
-        return perturbed
+        # print("begin rappor prints)")
+        # print(np.sum(flip))
+        np.less(flip, sample_b_flip, out=flip)
+        # print(np.sum(flip))
+        # print(np.sum(private_samples_rappor))
+        np.logical_xor(private_samples_rappor, flip, out=private_samples_rappor)# perturb the b indices
+        # print(np.sum(private_samples_rappor))
+        private_samples_rappor[np.ix_(users, inputs)] = np.random.random_sample((n,1)) < sample_a_1_pr #perturb the a indices
+        # print(np.sum(private_samples_rappor))
+        # print("end rappor prints)")
+        # print(private_samples_rappor.shape)
+        return private_samples_rappor
 
     def update_config(self, **kwargs):
         args = [privacy_budget, n_tiers, tier_split_percentages, domain_size, total_records, tier_indices, alpha, a, b, ind_to_tier] = list(kwargs.values())

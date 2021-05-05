@@ -169,6 +169,7 @@ class IDLDP:
             b = X
             pred_MSE = None
         elif opt_mode == 3:
+            print("rappor basic")
             # RAPPOR BASIC
             a = sigmoid(epsilon/2)
             b = 1-a
@@ -176,6 +177,7 @@ class IDLDP:
             pred_MSE = None
 
         elif opt_mode == 4: #TODO Note
+            print("oue basic")
             #OUE BASIC
             a = .5 #this is the probabilty a 1 stays a 1. so this is p in the USNIX (they end up being the same....)
             b = 1/(np.exp(epsilon) + 1) # this is flipping 0 to 1, which is equal to q in rapport and USENIX

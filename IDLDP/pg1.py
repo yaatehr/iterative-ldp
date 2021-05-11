@@ -156,8 +156,8 @@ class IDLDP:
         a, b, ind_to_tier = None, None, None
         if opt_mode == 0:
             X, pred_MSE = self.min_opt0(epsilons, **config)
-            a = np.ones((n_tiers,1))*sigmoid(epsilon/2)
-            b = 1-a
+            a = X[:n_tiers].reshape((n_tiers,1))
+            b = X[n_tiers:].reshape((n_tiers,1))
         elif opt_mode == 1:
             X, pred_MSE = self.min_opt1(epsilons, **config)
             a = sigmoid(X)

@@ -102,14 +102,18 @@ class RAPPOR:
             # print(self.b.shape)
             # print(self.a.shape)
             sample_b_flip = np.tile(self.b, (n,1)).reshape((n,1)).astype("float32")
+            # print(sample_b_flip.shape)
             sample_a_1_pr = np.tile(self.a, (n,1)).reshape((n,1)).astype("float32")
         else:
             sample_tiers = np.vectorize(self.ind_to_tier.__getitem__)(samples).astype("uint8")
+            # print(self.b.T)
+            # print(self.a.T)
             tb =  np.tile(self.b.T.astype("float32"), (n, 1))
             # print(tb.shape)
             ta = np.tile(self.a.T.astype("float32"), (n, 1))
             # print(ta.shape)
             sample_b_flip = tb[users, sample_tiers].reshape((n,1)) #TODO at 100k samples, this tries to allocate 200GiB sized arrays which causes an error
+            # print(sample_b_flip.shape)
             # potentially see example here: https://stackoverflow.com/questions/39611045/use-multi-processing-threading-to-break-numpy-array-operation-into-chunks
             sample_a_1_pr = ta[users, sample_tiers].reshape((n,1))
 
@@ -176,7 +180,6 @@ class RAPPOR:
         # Estimate the PMF using the count vector
         
         p_rappor = (counts / float(n)) * ((self.exp + 1) /(self.exp - 1)) - 1.0 / (self.exp - 1)
-        
         if normalization == 0: 
             p_rappor = probability_normalize(p_rappor) #clip and normalize
         if normalization == 1:
@@ -190,6 +193,7 @@ class RAPPOR:
         #                       1: simplex projection
         #                       else: no nomalization
         # Estimate the PMF using the count vector
+        # print(out_samples.shape) 
         if out_samples is None:
             output = np.empty(self.absz)
             output[:] = np.nan

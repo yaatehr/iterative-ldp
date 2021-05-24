@@ -17,15 +17,18 @@ def sigmoid(x: float):
 def matlab_to_numpy(mlarray):
     return np.array(mlarray._data).reshape(mlarray.size, order='F')
 
-LDP_MECHANISMS = [ "hadamard", "oue_basic", "rappor_basic", "idldp_opt0", "rappor_idldp_opt1", "oue_idldp_opt_2"]
+LDP_MECHANISMS = [ "Hadamard", "Oue_Basic", "Rappor_Basic", "IDLDP_Opt0", "Rappor_IDLDP_Opt1", "Oue_IDLDP_Opt2"]
 
+COMP_LIST = [s.upper()for s in LDP_MECHANISMS]
 def ldp_mechanism_helper(ldp_mechanism: str):
     """
     take in mechanism string and return the opt_mode integer for idldp/rappor config.
     if hadamard return -1. 
     """
-    assert ldp_mechanism in LDP_MECHANISMS, f'ldp mechanism must be one of {LDP_MECHANISMS} but got {ldp_mechanism}'
-    ldp_index = LDP_MECHANISMS.index(ldp_mechanism)
+    ldp_mechanism = ldp_mechanism.upper()
+
+    assert ldp_mechanism in COMP_LIST, f'ldp mechanism must be one of {LDP_MECHANISMS} but got {ldp_mechanism} (case insensitive)'
+    ldp_index = COMP_LIST.index(ldp_mechanism)
     if ldp_index == 0:
         return -1
     elif ldp_index == 1:

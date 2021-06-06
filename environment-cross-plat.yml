@@ -1,0 +1,17 @@
+name: idldp
+channels:
+  - defaults
+dependencies:
+  - python=3.8
+  - notebook
+  - numpy
+  - pandas
+  - jupyterlab
+  - scikit-learn
+  - scipy
+  - fuzzywuzzy
+  - matplotlib
+  - jedi
+  - ipycache
+  - seaborn
+prefix: /home/yaatehr/miniconda3/envs/idldp
